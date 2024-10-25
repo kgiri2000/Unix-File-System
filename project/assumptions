@@ -1,0 +1,15 @@
+
+You can make the following simplifying assumptions in your project:
+
+1. The block size is 64 bytes.
+2. Reserve block number 0 for disk manager superblock.
+3. There will never be more then 4 partitions
+4. you can assume any one write or read is serial.  But you CAN NOT assume that different file open's on the same file.  They have independent rw pointers and you need be very careful with you file open table are consistent with the actual file information on the disk.
+
+
+suggestions:
+1. you need diskmanager and partition manager working before the filesystem.  
+2. EVERYONE IN THE GROUP should agree to all the helper funcitons first.  DO NOT create  multiple helper functions doing the same thing.   This includes agreeing to the return values.
+3. you should figure the return value for every file system funciton, before you write a single line of code in the file system.
+4. in the file system, createfile should be the method you get working first
+5. the drivers provide a guide line to which methods should be working first and which can be puto off until later.  But it's stil up you when you worry about sub directories vs files.
