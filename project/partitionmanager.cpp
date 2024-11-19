@@ -10,13 +10,17 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   myDM = dm;
   myPartitionName = partitionname;
   myPartitionSize = myDM->getPartitionSize(myPartitionName);
-
   /* If needed, initialize bit vector to keep track of free and allocted
      blocks in this partition */
+  myBitVector = new BitVector(myPartitionSize);
+  char buffer[64];
+  myDM->readDiskBlock(myParitionName, 0, buffer);
+  myBitVector->setBitVector((unsigned int * ) buffer);
 }
 
 PartitionManager::~PartitionManager()
 {
+  delete myBitVector;
 }
 
 /*
@@ -25,6 +29,16 @@ PartitionManager::~PartitionManager()
 int PartitionManager::getFreeDiskBlock()
 {
   /* write the code for allocating a partition block */
+  for (int i = 2; i < myPartitionSize; i++) {
+    if (myBitVector->testBit(i) == 0) {
+      myBitVector->setBit(i);
+      char buffer[64];
+
+      myBitVector->getBitVector((unsigned int *) buffer);
+      myDM->writeDiskBlock(myPartitionName, 0, buffer);
+      return i;
+    }
+  }
   return -1; //place holder so there are no compiler warnings
 }
 
@@ -34,6 +48,17 @@ int PartitionManager::getFreeDiskBlock()
 int PartitionManager::returnDiskBlock(int blknum)
 {
   /* write the code for deallocating a partition block */
+  char buffer[64];
+  for (int i = 0; i <= 63; i++) {
+    buffer[i] = "#"
+  }
+  int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer);
+  if (result == 0) {
+    myBitVector->resetBit(blknum);
+    myBitVector->getBitVector((unsigned int *) buffer);
+    myDM->writeDiskBlock(myPartitionName, 0, buffer);
+    return 0;
+  }
   return -1; //place holder so there are no compiler warnings
 }
 
