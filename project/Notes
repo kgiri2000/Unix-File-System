@@ -1,0 +1,5 @@
+1. Made the driver for the disk to simulate how it is working
+2. Using hexeditor to check the disk
+    sudo apt install hexeditor  
+    hexedit virtualdisk
+
