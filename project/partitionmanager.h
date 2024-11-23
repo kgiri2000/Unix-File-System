@@ -7,7 +7,7 @@
 
 class PartitionManager {
   DiskManager *myDM;
- 
+  BitVector *myBV;
   /* declare other private members here */
 
 
