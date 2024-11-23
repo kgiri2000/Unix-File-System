@@ -1,6 +1,7 @@
 #include "disk.h"
 #include "diskmanager.h"
 #include "partitionmanager.h"
+#include "bitvector.h"
 #include <iostream>
 using namespace std;
 
@@ -12,15 +13,15 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   myPartitionSize = myDM->getPartitionSize(myPartitionName);
   /* If needed, initialize bit vector to keep track of free and allocted
      blocks in this partition */
-  myBitVector = new BitVector(myPartitionSize);
+  myBV = new BitVector(myPartitionSize);
   char buffer[64];
   myDM->readDiskBlock(myPartitionName, 0, buffer);
-  myBitVector->setBitVector((unsigned int * ) buffer);
+  myBV->setBitVector((unsigned int * ) buffer);
 }
 
 PartitionManager::~PartitionManager()
 {
-  delete myBitVector;
+  delete myBV;
 }
 
 /*
@@ -30,11 +31,11 @@ int PartitionManager::getFreeDiskBlock()
 {
   /* write the code for allocating a partition block */
   for (int i = 2; i < myPartitionSize; i++) {
-    if (myBitVector->testBit(i) == 0) {
-      myBitVector->setBit(i);
+    if (myBV->testBit(i) == 0) {
+      myBV->setBit(i);
       char buffer[64];
 
-      myBitVector->getBitVector((unsigned int *) buffer);
+      myBV->getBitVector((unsigned int *) buffer);
       myDM->writeDiskBlock(myPartitionName, 0, buffer);
       return i;
     }
@@ -54,12 +55,12 @@ int PartitionManager::returnDiskBlock(int blknum)
   
   char buffer[64];
   for (int i = 0; i <= 63; i++) {
-    buffer[i] = "#"
+    buffer[i] = '#';
   }
   int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer);
   if (result == 0) {
-    myBitVector->resetBit(blknum);
-    myBitVector->getBitVector((unsigned int *) buffer);
+    myBV->resetBit(blknum);
+    myBV->getBitVector((unsigned int *) buffer);
     myDM->writeDiskBlock(myPartitionName, 0, buffer);
     return 0;
   }
