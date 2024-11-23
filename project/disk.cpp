@@ -43,6 +43,7 @@ int Disk::readDiskBlock(int blknum, char *blkdata)
 */
 {
   if ((blknum < 0) || (blknum >= blkCount)) return(-2);
+  //input file stream with read only mode.
   ifstream f(diskFilename, ios::in);
   if (!f) return(-1);
   f.seekg(blknum * blkSize);
@@ -59,6 +60,9 @@ int Disk::writeDiskBlock(int blknum, char *blkdata)
 */
 {
   if ((blknum < 0) || (blknum >= blkCount)) return(-2);
+  //Creates fstream object named f that attempts to open
+  //the file specified by diskFilename with both input and output
+  //modes
   fstream f(diskFilename, ios::in|ios::out);
   if (!f) return(-1);
   f.seekg(blknum * blkSize);
