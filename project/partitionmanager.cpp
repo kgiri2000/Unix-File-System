@@ -14,7 +14,7 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
      blocks in this partition */
   myBitVector = new BitVector(myPartitionSize);
   char buffer[64];
-  myDM->readDiskBlock(myParitionName, 0, buffer);
+  myDM->readDiskBlock(myPartitionName, 0, buffer);
   myBitVector->setBitVector((unsigned int * ) buffer);
 }
 
@@ -48,6 +48,10 @@ int PartitionManager::getFreeDiskBlock()
 int PartitionManager::returnDiskBlock(int blknum)
 {
   /* write the code for deallocating a partition block */
+  if (blknum <=1 || blknum >= myPartitionSize) {
+    return -1;
+  }
+  
   char buffer[64];
   for (int i = 0; i <= 63; i++) {
     buffer[i] = "#"
