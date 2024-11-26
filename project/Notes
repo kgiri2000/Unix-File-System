@@ -54,7 +54,11 @@ In Linux terminal:
 >>make -f makefile_partition
 >>./partition_manager
 
-Be sure to checkout on my branch 
+You can also see the disk memory either using hexedit or xxd
+
+>>xxd DISK1
+
+Make sure to checkout on my branch 
 
 
 
