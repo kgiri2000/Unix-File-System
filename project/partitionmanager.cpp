@@ -15,12 +15,39 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
      blocks in this partition */
   myBV = new BitVector(myPartitionSize);
   char buffer[64];
-  myDM->readDiskBlock(myPartitionName, 0, buffer);
-  myBV->setBitVector((unsigned int * ) buffer);
+  //setup buffer with default value, so no junk in the bitvector
+  for (int j = 0; j < 64; j++) buffer[j] = '#';
+  
+  // We initialize the Partition manage, we store the value of initial bit vector in buffer 
+  // and write that buffer in to the block 0 
+  //Getting the bit vecctor
+  myBV->getBitVector((unsigned int *) buffer);
+  // myBV->setBitVector((unsigned int *)buffer);
+  //[0##..###] for partitionsize < 32
+  myDM->writeDiskBlock(myPartitionName,0, buffer);
+
+  //This code is just reading from block 0 of the partition and setting the bitvector with those values.
+  //I am getting random bits value in the bitvector
+  // myDM->readDiskBlock(myPartitionName, 0, buffer);
+  // myBV->setBitVector((unsigned int * ) buffer);
+
+  //Debugging Only
+  //print out the bit vector
+  cout<<"Original Bit Vector: ";
+  for (int i=0; i<10; i++) {
+    if (myBV->testBit(i) ==0) {
+       cout <<"0";
+    } else {
+       cout <<"1";
+    }
+  }
+
+
 }
 
 PartitionManager::~PartitionManager()
 {
+  //we can try saving bitVector back to block zero before deleting
   delete myBV;
 }
 
@@ -32,15 +59,30 @@ int PartitionManager::getFreeDiskBlock()
   /* write the code for allocating a partition block */
   for (int i = 2; i < myPartitionSize; i++) {
     if (myBV->testBit(i) == 0) {
-      myBV->setBit(i);
-      char buffer[64];
 
+      //After getting the free block, we set it to 1
+      myBV->setBit(i);
+      //Save the updated BitVecctor back to the block 0
+      char buffer[64];
       myBV->getBitVector((unsigned int *) buffer);
       myDM->writeDiskBlock(myPartitionName, 0, buffer);
+        //Debugging Only
+      //print out the bit vector
+
+      cout<<"After Allocating at block"<<i<<": ";
+      for (int i=0; i<10; i++) {
+        if (myBV->testBit(i) ==0) {
+          cout <<"0";
+        } else {
+          cout <<"1";
+        }
+      }
+
+
       return i;
     }
   }
-  return -1; //place holder so there are no compiler warnings
+  return -1; // No free blocks
 }
 
 /*
@@ -59,22 +101,38 @@ int PartitionManager::returnDiskBlock(int blknum)
   }
   int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer);
   if (result == 0) {
+    //reset the bit vector
     myBV->resetBit(blknum);
+    //Get the bit vector in the buffer
     myBV->getBitVector((unsigned int *) buffer);
+    //Store the new buffer in the first block of the partation
     myDM->writeDiskBlock(myPartitionName, 0, buffer);
+    //print out the bit vector
+
+    //Debugging Only
+    cout<<"After Deallocating in block"<<blknum<<": ";
+    for (int i=0; i<10; i++) {
+      if (myBV->testBit(i) ==0) {
+        cout <<"0";
+      } else {
+        cout <<"1";
+      }
+    }
     return 0;
   }
-  return -1; //place holder so there are no compiler warnings
+  return -1; //Error
 }
 
 
 int PartitionManager::readDiskBlock(int blknum, char *blkdata)
 {
+  //We can check the bound of the blk number
   return myDM->readDiskBlock(myPartitionName, blknum, blkdata);
 }
 
 int PartitionManager::writeDiskBlock(int blknum, char *blkdata)
 {
+  //We can check the bound for the block number
   return myDM->writeDiskBlock(myPartitionName, blknum, blkdata);
 }
 

@@ -33,6 +33,9 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
 
 
 }
+DiskManager::~DiskManager(){
+  delete diskP;
+}
 
 /*
  *   returns: 
@@ -51,12 +54,12 @@ int DiskManager::readDiskBlock(char partitionname, int blknum, char *blkdata)
   //Loop through all partations to find the specified partation
   for(int i = 0; i < partCount; ++i){
     //If the partation supplied matches the disk partation name
-    if(diskP[i],partitionname == partitionname){
+    if(diskP[i].partitionName == partitionname){
       //If block number is within the bounds of the partation
       if(blknum >= 0 && blknum < diskP[i].partitionSize){
         //skip the superblock
         int diskBlockNum = partationStart + blknum +  1; 
-        return myDisk->writeDiskBlock(diskBlockNum, blkdata);
+        return myDisk->readDiskBlock(diskBlockNum, blkdata);
       }else{
         //Block number out of bound
         return(-2);
@@ -65,7 +68,7 @@ int DiskManager::readDiskBlock(char partitionname, int blknum, char *blkdata)
     //Move to next partition's start block
     partationStart += diskP[i].partitionSize;
   }
-  //Partation doesn't exit
+  //Partition doesn't exit
   return(-3);
 
 }

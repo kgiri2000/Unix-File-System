@@ -1,5 +1,60 @@
-1. Made the driver for the disk to simulate how it is working
-2. Using hexeditor to check the disk
-    sudo apt install hexeditor  
-    hexedit virtualdisk
+Disk:
+Disk object divided the disk to 64 bytes block where we can use read and write operation.
+
+Disk Manager:
+Disk Manager does two primary things:
+    - It has Disk partition class which are used to create desirable numbers of disk partition.
+        Like, "A": 100 , "B": 70, "C" : 90, "D": 110
+    - It then make a disk partition object inside the constructor to record all the parttition and
+        save those partition to the first block of Disk which is block 0.
+    -It then faciliate the read, write operation in using the read and write operation from disk object but also provides the option to read and write based on the partition name.
+
+
+Partition Manager:
+Partition Manager works with each disk manager object or  each disk partition and provide certain functionality:
+    - In constructor, it initializes the bitvector of size of blocknumber for each partition with all 0's as all the blocks are empty at first.
+    - It  then help to allocate and deallocate the block by getting and setting the bitvector values. To allocate, it search the each block and checks it's  bit value, if 0 then it will allocate that block. To deallocate, it will again check that block and replace all the values with "#" and set the bit value of that block to 0 so other process can use that block.
+    - It also provides the functionality to directly read and write to the block  which changes the bit value when we read in the bit vector.
+
+However, there might be something with the partition manager mainly while implementing the constructor.
+
+I highly recommend looking by yourself.
+I have made a driver file to see how all the objects works until now.
+I have slightly changed the code by Reis inside the constructor of PartitionManager
+I was able to get the right value inside the bitvecctor; however when I look at the disk then I am getting some random values on block 0 and 1 where block 0 is used to store bitvector and 
+block 1 is left empty.
+
+
+00000000: 4100 0000 0a00 0000 4200 0000 0500 0000  A.......B.......   
+00000010: 4300 0000 0500 0000 4400 0000 0500 0000  C.......D.......
+00000020: 0000 0000 0000 0000 6ee2 7c32 647f 0000  ........n.|2d...
+00000030: 1800 0000 0000 0000 103b 6b88 ff7f 0000  .........;k.....
+00000040: 2f23 2323 2323 2323 4b2a 4000 0000 0000  /#######K*@.....
+00000050: 0041 6000 0000 0000 3010 4000 0000 0000  .A`.....0.@.....
+00000060: e03b 6b88 ff7f 0000 0000 0000 0000 0000  .;k.............
+00000070: 0000 0000 0000 0000 5bf0 1b33 647f 0000  ........[..3d...
+00000080: 2323 2323 2323 2323 2323 2323 2323 2323  ################
+00000090: 2323 2323 2323 2323 2323 2323 2323 2323  ################
+000000a0: 2323 2323 2323 2323 2323 2323 2323 2323  ################
+000000b0: 2323 2323 2323 2323 2323 2323 2323 2323  ################
+000000c0: 2048 656c 6c6f 2052 6561 6c6c 6f63 6174   Hello Reallocat
+000000d0: 6564 2042 6c6f 636b 0000 0000 0000 0000  ed Block........
+000000e0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+000000f0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000100: 4865 6c6c 6f20 426c 6f63 6b20 3300 0000  Hello Block 3...
+00000110: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000120: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000130: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+
+The right most column is the disk memory which shows 16 bytes of values per row, first 4 rows 
+belongs to block 1, row 5-8 belongs to block 2 which has random values. However, other blocks are working fine.
+
+To run this code,
+In Linux terminal:
+>>make -f makefile_partition
+>>./partition_manager
+
+Be sure to checkout on my branch 
+
+
 
