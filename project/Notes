@@ -62,3 +62,20 @@ Make sure to checkout on my branch
 as well as the driver_partition.cpp
 
 
+File System
+I am able to implment and basic framework for the file system to work upon as well as create file function. It needs more improvement over time.
+
+To run:
+Make sure you run 
+>> make clean 
+if you are compiling multiple times
+
+>> make -f make_file_driver
+>>./filesystem
+
+To check the DISK1
+
+>>xxd DISK1
+
+I highly recommend to check the DISK1 and debugg the error as I am not able to get
+right information in the disk.

@@ -13,34 +13,25 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   myPartitionSize = myDM->getPartitionSize(myPartitionName);
   /* If needed, initialize bit vector to keep track of free and allocted
      blocks in this partition */
-  myBV = new BitVector(myPartitionSize);
+  BitVector *myBV = new BitVector(myPartitionSize);
   char buffer[64];
   //setup buffer with default value, so no junk in the bitvector
   for (int j = 0; j < 64; j++) buffer[j] = '#';
   
-  // We initialize the Partition manage, we store the value of initial bit vector in buffer 
-  // and write that buffer in to the block 0 
-  //Getting the bit vecctor
-  myBV->getBitVector((unsigned int *) buffer);
-  // myBV->setBitVector((unsigned int *)buffer);
-  //[0##..###] for partitionsize < 32
-  myDM->writeDiskBlock(myPartitionName,0, buffer);
-
-  //This code is just reading from block 0 of the partition and setting the bitvector with those values.
-  //I am getting random bits value in the bitvector
-  // myDM->readDiskBlock(myPartitionName, 0, buffer);
-  // myBV->setBitVector((unsigned int * ) buffer);
-
+  //Code from technical_issue
+  myBV->getBitVector((unsigned int *)buffer);
+  myDM->writeDiskBlock(myPartitionName, 0, buffer);
   //Debugging Only
   //print out the bit vector
   cout<<"Original Bit Vector: ";
-  for (int i=0; i<10; i++) {
+  for (int i=0; i<100; i++) {
     if (myBV->testBit(i) ==0) {
        cout <<"0";
     } else {
        cout <<"1";
     }
   }
+  cout<<endl;
 
 
 }
@@ -49,6 +40,7 @@ PartitionManager::~PartitionManager()
 {
   //we can try saving bitVector back to block zero before deleting
   delete myBV;
+ 
 }
 
 /*
