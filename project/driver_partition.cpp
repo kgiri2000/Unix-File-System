@@ -9,7 +9,7 @@ using namespace std;
 int main(){
 
     //Create a Disk and DiskManager
-    Disk *d = new Disk(25, 64, const_cast<char *>("DISK1"));
+    Disk *d = new Disk(50, 64, const_cast<char *>("DISK1"));
     DiskPartition *dp = new DiskPartition[4];
 
     dp[0].partitionName = 'A';
@@ -23,11 +23,11 @@ int main(){
 
     DiskManager *dm = new DiskManager(d, 4, dp);
 
-    PartitionManager *pm = new PartitionManager(dm, 'A', 10);
+    PartitionManager *pm = new PartitionManager(dm, 'B', 10);
     cout<<endl;
 
-    cout<< "Testing Partition Manager for Partition A: \n";
-    cout<<"Partation Size: "<<dm->getPartitionSize('A')<<endl;
+    cout<< "Testing Partition Manager for Partition B: \n";
+    cout<<"Partation Size: "<<dm->getPartitionSize('B')<<endl;
     
     //Test 1: Allocate blocks
     //Get free blocks
@@ -80,10 +80,6 @@ int main(){
     pm->readDiskBlock(block4, buffer);
     cout<< "Read from Reallocated Block: "<<buffer <<endl;
 
-    delete pm;
-    delete dm;
-    delete d;
-    delete[] dp;
 
     return 0;
     

@@ -18,15 +18,13 @@ struct FileInode{
 
 //Directory entry structure
 struct DirectoryEntry{
-  char enntryName;
+  char entryName;
   int blockPointer;
   char entryType;
 };
 
 //Directory i-node Structure
 struct DirectoryInode{
-  char name;
-  char type;
   DirectoryEntry entries[10];
   int nextDirBlock;
 };
@@ -57,10 +55,12 @@ class FileSystem {
 
   //Helper Functions
   bool isValidFileName(const char *filename, int fileLen);
-  int findFile(const char *filename);
   int allocateBlock();
   void freeBlock(int blknum);
-  int allocateFileBlocks(int fileSize, std::vector<int> &allocatedBlocks);
+  int findFile(int fblock, const std::string &fname);
+  int findDirectory(int dirBlock, const std::string &name);
+  int addEntryToDirectory(int dirBlock, const std::string &name, int blockPointer, int type);
+
 
   public:
     FileSystem(DiskManager *dm, char fileSystemName);
@@ -83,6 +83,7 @@ class FileSystem {
     int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */);
 
     /* declare other public members here */
+    
 
 };
 #endif

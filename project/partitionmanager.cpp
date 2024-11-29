@@ -13,27 +13,20 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   myPartitionSize = myDM->getPartitionSize(myPartitionName);
   /* If needed, initialize bit vector to keep track of free and allocted
      blocks in this partition */
-  BitVector *myBV = new BitVector(myPartitionSize);
-  char buffer[64];
-  //setup buffer with default value, so no junk in the bitvector
-  for (int j = 0; j < 64; j++) buffer[j] = '#';
+  myBV = new BitVector(myPartitionSize);
   
-  //Code from technical_issue
+  char buffer[64] ={'#'};
   myBV->getBitVector((unsigned int *)buffer);
-  myDM->writeDiskBlock(myPartitionName, 0, buffer);
-  //Debugging Only
-  //print out the bit vector
-  cout<<"Original Bit Vector: ";
-  for (int i=0; i<100; i++) {
-    if (myBV->testBit(i) ==0) {
-       cout <<"0";
-    } else {
-       cout <<"1";
-    }
+  myDM->writeDiskBlock(myPartitionName, myPartitionSize, buffer);
+  char buffer1[64] = {0};
+  myDM->writeDiskBlock(myPartitionName, 1, buffer1);
+  for (int i=0; i<10; i++) {
+  if (myBV->testBit(i) ==0) {
+    cout <<"0";
+  } else {
+    cout <<"1";
   }
-  cout<<endl;
-
-
+}
 }
 
 PartitionManager::~PartitionManager()
@@ -49,6 +42,9 @@ PartitionManager::~PartitionManager()
 int PartitionManager::getFreeDiskBlock()
 {
   /* write the code for allocating a partition block */
+  char buffer[64] ={'#'};
+  myDM->readDiskBlock(myPartitionName, 0, buffer);
+  myBV->setBitVector((unsigned int *)buffer);
   for (int i = 2; i < myPartitionSize; i++) {
     if (myBV->testBit(i) == 0) {
 
@@ -82,16 +78,20 @@ int PartitionManager::getFreeDiskBlock()
  */
 int PartitionManager::returnDiskBlock(int blknum)
 {
+
+  char buffer[64] ={'#'};
+  myDM->readDiskBlock(myPartitionName, 0, buffer);
+  myBV->setBitVector((unsigned int *)buffer);
   /* write the code for deallocating a partition block */
   if (blknum <=1 || blknum >= myPartitionSize) {
     return -1;
   }
-  
-  char buffer[64];
-  for (int i = 0; i <= 63; i++) {
-    buffer[i] = '#';
+  if(myBV->testBit(blknum) == 0){
+    return -1; //Block is alread free
   }
-  int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer);
+  
+  char buffer1[64] = {'#'};
+  int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer1);
   if (result == 0) {
     //reset the bit vector
     myBV->resetBit(blknum);
@@ -122,10 +122,19 @@ int PartitionManager::readDiskBlock(int blknum, char *blkdata)
   return myDM->readDiskBlock(myPartitionName, blknum, blkdata);
 }
 
-int PartitionManager::writeDiskBlock(int blknum, char *blkdata)
-{
-  //We can check the bound for the block number
-  return myDM->writeDiskBlock(myPartitionName, blknum, blkdata);
+int PartitionManager::writeDiskBlock(int blknum, char *blkdata) {
+    // Check if the block number is valid
+    if (blknum < 0 || blknum >= myPartitionSize) {
+        return -1; // Invalid block number
+    }
+
+    // Ensure that the write operation was successful
+    int result = myDM->writeDiskBlock(myPartitionName, blknum, blkdata);
+    if (result != 0) {
+        std::cerr << "Error: Failed to write to disk block " << blknum << std::endl;
+        return -1; // Write operation failed
+    }
+    return 0; // Write operation successful
 }
 
 int PartitionManager::getBlockSize() 

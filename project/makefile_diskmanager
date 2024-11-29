@@ -1,8 +1,8 @@
 CXX = g++
 CXXFLAGS = -Wall -std=c++11
-SRC = file_driver.cpp disk.cpp diskmanager.cpp bitvector.cpp partitionmanager.cpp filesystem.cpp
+SRC = main.cpp disk.cpp diskmanager.cpp 
 OBJ = $(SRC:.cpp=.o)
-EXEC = filesystem
+EXEC = diskmanager
 
 all: $(EXEC)
 

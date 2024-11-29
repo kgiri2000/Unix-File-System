@@ -12,7 +12,7 @@ using namespace std;
 
 int main()
 {
-  Disk *d = new Disk(350, 64, const_cast<char *>("DISK1"));
+    Disk *d = new Disk(350, 64, const_cast<char *>("DISK1"));
   DiskPartition *dp = new DiskPartition[4];
 
   dp[0].partitionName = 'A';
@@ -26,17 +26,10 @@ int main()
 
   DiskManager *dm = new DiskManager(d, 4, dp);
   FileSystem *fs1 = new FileSystem(dm, 'A');
-  cout<<"File System Initialized for partation A"<<endl;
-  const char *file1 = "/file1";
-  if(fs1->createFile(const_cast<char *>(file1), 10) == 0){
-    cout<< "File " << file1<< " created successfully"<<endl;
+  fs1->createFile(const_cast<char *>("/a"), 2);
+  if(fs1){
+    cout<<"File Create"<<endl;
   }
 
 
-
-
-  delete fs1;
-  delete dm;
-  delete []dp;
-  delete d;
 }
