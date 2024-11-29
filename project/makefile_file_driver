@@ -1,0 +1,16 @@
+CXX = g++
+CXXFLAGS = -Wall -std=c++11
+SRC = driver_filesystem.cpp disk.cpp diskmanager.cpp bitvector.cpp partitionmanager.cpp filesystem.cpp
+OBJ = $(SRC:.cpp=.o)
+EXEC = filesystem
+
+all: $(EXEC)
+
+$(EXEC): $(OBJ)
+	$(CXX) -o $@ $^
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+clean:
+	rm -f $(OBJ) $(EXEC)

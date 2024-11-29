@@ -5,14 +5,62 @@
 #include <vector>
 using namespace std;
 
+//File i-node
+struct FileInode{
+  char name; //1 byte
+  char type; //1 byte
+  int size; //4 bytes
+  int direct[3]; //12 bytes
+  int indirect; // 4 bytes
+  char attributes[44];
+
+};
+
+//Directory entry structure
+struct DirectoryEntry{
+  char entryName;
+  int blockPointer;
+  char entryType;
+};
+
+//Directory i-node Structure
+struct DirectoryInode{
+  DirectoryEntry entries[10];
+  int nextDirBlock;
+};
+
+//Indirect i-node structure
+struct IndirectInode{
+  int blockPointers[16];
+};
 
 class FileSystem {
   DiskManager *myDM;
   PartitionManager *myPM;
   char myfileSystemName;
   int myfileSystemSize;
-  
   /* declare other private members here */
+
+  //Open File Entry to store file description at run time
+  struct OpenFileEntry{
+    int fileDesc;
+    int rwPointer;
+    char mode;
+    bool isLocked;
+    int lockId;
+  };
+
+  //Vector to store open file table with open file entry object
+  std::vector<OpenFileEntry> openFileTable;
+
+  //Helper Functions
+  bool isValidFileName(const char *filename, int fileLen);
+  int allocateBlock();
+  void freeBlock(int blknum);
+  int findFile(int fblock, const std::string &fname);
+  int findDirectory(int dirBlock, const std::string &name);
+  int addEntryToDirectory(int dirBlock, const std::string &name, int blockPointer, int type);
+
 
   public:
     FileSystem(DiskManager *dm, char fileSystemName);
@@ -35,6 +83,7 @@ class FileSystem {
     int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */);
 
     /* declare other public members here */
+    
 
 };
 #endif
