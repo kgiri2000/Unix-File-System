@@ -6,6 +6,8 @@
 using namespace std;
 
 //File i-node
+//TO remove padding
+#pragma pack(push, 1)
 struct FileInode{
   char name; //1 byte
   char type; //1 byte
@@ -13,7 +15,8 @@ struct FileInode{
   int direct[3]; //12 bytes
   int indirect; // 4 bytes
   char time ; //1
-  char modified;//1
+  int direct1[10];
+  char last ;
   
 
 };
@@ -35,6 +38,7 @@ struct DirectoryInode{
 struct IndirectInode{
   int blockPointers[16];
 };
+#pragma pack(pop)
 
 class FileSystem {
   DiskManager *myDM;
@@ -59,9 +63,9 @@ class FileSystem {
   bool isValidFileName(const char *filename, int fileLen);
   int allocateBlock();
   void freeBlock(int blknum);
-  int findFile(int fblock, const std::string &fname);
-  int findDirectory(int dirBlock, const std::string &name);
-  int addEntryToDirectory(int dirBlock, const std::string &name, int blockPointer, int type);
+  int findFile(int fblock, const char &fname);
+  int findDirectory(int dirBlock, const char &name);
+  int addEntryToDirectory(int dirBlock, const char &name, int blockPointer, char type);
 
 
   public:
