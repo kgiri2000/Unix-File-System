@@ -11,6 +11,7 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
   partCount= partcount;
   int r = myDisk->initDisk();
   char buffer[64];
+  for (int j = 0; j < 64; j++) buffer[j] = '#';
 
   /* If needed, initialize the disk to keep partition information */
   diskP = new DiskPartition[partCount];
