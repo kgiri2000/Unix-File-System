@@ -15,18 +15,14 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
      blocks in this partition */
   myBV = new BitVector(myPartitionSize);
   
-  char buffer[64] ={'#'};
+  char buffer[64];
+  for (int j = 0; j < 64; j++) buffer[j] = '#';
+  cout<<"Initial buffer: "<<buffer<<endl;
   myBV->getBitVector((unsigned int *)buffer);
-  myDM->writeDiskBlock(myPartitionName, myPartitionSize, buffer);
-  char buffer1[64] = {0};
+  myDM->writeDiskBlock(myPartitionName, 0, buffer);
+  char buffer1[64];
+  for (int j = 0; j < 64; j++) buffer1[j] = '0';
   myDM->writeDiskBlock(myPartitionName, 1, buffer1);
-  for (int i=0; i<10; i++) {
-  if (myBV->testBit(i) ==0) {
-    cout <<"0";
-  } else {
-    cout <<"1";
-  }
-}
 }
 
 PartitionManager::~PartitionManager()
@@ -42,9 +38,6 @@ PartitionManager::~PartitionManager()
 int PartitionManager::getFreeDiskBlock()
 {
   /* write the code for allocating a partition block */
-  char buffer[64] ={'#'};
-  myDM->readDiskBlock(myPartitionName, 0, buffer);
-  myBV->setBitVector((unsigned int *)buffer);
   for (int i = 2; i < myPartitionSize; i++) {
     if (myBV->testBit(i) == 0) {
 
@@ -52,6 +45,7 @@ int PartitionManager::getFreeDiskBlock()
       myBV->setBit(i);
       //Save the updated BitVecctor back to the block 0
       char buffer[64];
+      for (int j = 0; j < 64; j++) buffer[j] = '#';
       myBV->getBitVector((unsigned int *) buffer);
       myDM->writeDiskBlock(myPartitionName, 0, buffer);
         //Debugging Only
@@ -79,9 +73,6 @@ int PartitionManager::getFreeDiskBlock()
 int PartitionManager::returnDiskBlock(int blknum)
 {
 
-  char buffer[64] ={'#'};
-  myDM->readDiskBlock(myPartitionName, 0, buffer);
-  myBV->setBitVector((unsigned int *)buffer);
   /* write the code for deallocating a partition block */
   if (blknum <=1 || blknum >= myPartitionSize) {
     return -1;
@@ -90,8 +81,9 @@ int PartitionManager::returnDiskBlock(int blknum)
     return -1; //Block is alread free
   }
   
-  char buffer1[64] = {'#'};
-  int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer1);
+  char buffer[64];
+  for (int j = 0; j < 64; j++) buffer[j] = '#';
+  int result = myDM->writeDiskBlock(myPartitionName, blknum, buffer);
   if (result == 0) {
     //reset the bit vector
     myBV->resetBit(blknum);
