@@ -49,33 +49,36 @@ block 1 is left empty.
 The right most column is the disk memory which shows 16 bytes of values per row, first 4 rows 
 belongs to block 1, row 5-8 belongs to block 2 which has random values. However, other blocks are working fine.
 
-To run this code,
-In Linux terminal:
->>make -f makefile_partition
->>./partition_manager
 
-You can also see the disk memory either using hexedit or xxd
+
+To run the code
+Make sure you do
+
+>>make clean
+
+after each re-compile which removes all .o files and DISK1 
+
+For DISKMANAGER
+>> make -f makefile_diskmanager
+>> ./diskmanager
 
 >>xxd DISK1
 
-Make sure to checkout on my branch 
-as well as the driver_partition.cpp
+For PartitionManager
 
+>>make -f makefile_partition_manager
+>>./partitionmanager
 
-File System
-I am able to implment and basic framework for the file system to work upon as well as create file function. It needs more improvement over time.
+>>xxd DISK1
 
-To run:
-Make sure you run 
->> make clean 
-if you are compiling multiple times
+For filesystem
 
->> make -f make_file_driver
+>>make -f makefile_filesystem
 >>./filesystem
 
-To check the DISK1
+>xxd DISK1
 
->>xxd DISK1
 
-I highly recommend to check the DISK1 and debugg the error as I am not able to get
-right information in the disk.
+
+
+

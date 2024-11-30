@@ -9,7 +9,7 @@ using namespace std;
 
 int main() {
     // Create a disk with 10 blocks, each of size 512 bytes, stored in "virtualdisk"
-    Disk myDisk(10, 64, (char*)"virtualdisk");
+    Disk myDisk(10, 64, (char*)"DISK1");
 
     // Initialize the disk
     int initResult = myDisk.initDisk();

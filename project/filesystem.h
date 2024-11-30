@@ -12,14 +12,16 @@ struct FileInode{
   int size; //4 bytes
   int direct[3]; //12 bytes
   int indirect; // 4 bytes
-  char attributes[44];
+  char time ; //1
+  char modified;//1
+  
 
 };
 
 //Directory entry structure
 struct DirectoryEntry{
-  char entryName;
   int blockPointer;
+  char entryName;
   char entryType;
 };
 
