@@ -51,4 +51,4 @@ driver: driver.cpp client.h bitvector.o disk.o diskmanager.o partitionmanager.o 
 	$(CC)  -o driver driver.cpp bitvector.o disk.o diskmanager.o partitionmanager.o filesystem.o
 
 clean: 
-	rm -f bitvector.o disk.o diskmanager.o partitionmanager.o filesystem.o driver1 driver2 driver3 driver4 driver5 driver6 driver7 driver8 driver bitvector_driver DISK1
+	rm -f bitvector.o disk.o diskmanager.o partitionmanager.o filesystem.o driver_diskmanager.o driver_partitionmanager.o driver_filesystem.o driver_filesystemTest.o diskmanager filesystem partitionmanager filesystemTest  virtualdisk driver1 driver2 driver3 driver4 driver5 driver6 driver7 driver8 driver bitvector_driver DISK1
