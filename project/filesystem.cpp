@@ -6,8 +6,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <map>
+#include <mutex>
+#include <atomic>
 using namespace std;
 
+map <string,int> fLocks;     //For locking and unlocking the files, we will need to map the file name tot he lock number
+mutex fLocksMut;        //For protecting the fLocks map
+atomic<int> lockNumGen{1};   //Atomic way of getting unique lock numbers
 
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName) {
     myDM = dm;
@@ -306,18 +312,31 @@ int FileSystem::createDirectory(char *dirname, int dnameLen)
 
 int FileSystem::lockFile(char *filename, int fnameLen)
 {
- return -1; //place holder so there is no warnings when compiling.
+ string fname(filename, fnameLen);
+ lock_guard<mutex> lock(fLocksMut);
+    if (fLocks.find(fname) != fLocks.end()) {
+        return -1; //The file is already locked in this case
+    }
+    int lockNum = lockNumGen.fetch_add(1); //Random lock number
+    fLocks[fname] = lockNum;
+    return lockNum;
 }
 
 int FileSystem::unlockFile(char *filename, int fnameLen, int lockId)
 {
- return -1; //place holder so there is no warnings when compiling.
+ string fname(filename, fnameLen);
+ lock_guard<mutex> lock(fLocksMut);
+    if (fLocks.find(fname) == fLocks.end() || fLocks[fname] != lockId) {
+        return -1; //No lock found
+    }
+    fLocks.erase(fname);
+    return 0;
 }
 
 int FileSystem::deleteFile(char *filename, int fnameLen) {
   string fname(filename,fnameLen);
   //We need to find the file's parent directory block
-  int parentBlock = findFile(1,  fname);
+  int parentBlock = findFile(1,  fname[0]);
   if (parentBlock == -1) {
     return -1; //Not found
   }
@@ -330,7 +349,7 @@ int FileSystem::deleteFile(char *filename, int fnameLen) {
 int FileSystem::deleteDirectory(char *dirname, int dnameLen) {
   string dirName(dirname, dnameLen);
   //We need to find the directory block that corresponds to given directory name
-  int dirBlock = findDirectory(1, dirName);
+  int dirBlock = findDirectory(1, dirName[0]);
   if (dirBlock == -1) {
     return -1; //Not found
   }
