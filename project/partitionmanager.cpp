@@ -17,7 +17,7 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   
   char buffer[64];
   for (int j = 0; j < 64; j++) buffer[j] = '#';
-  //buffer[64] = '\0';
+  buffer[64] = '\0';
   cout<<"Initial buffer: "<<buffer<<endl;
   myBV->getBitVector((unsigned int *)buffer);
   myDM->writeDiskBlock(myPartitionName, 0, buffer);
