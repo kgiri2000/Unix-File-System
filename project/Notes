@@ -80,5 +80,12 @@ For filesystem
 
 
 
+Recommeded:
+To visualize how directory and file i-node are written in the memory
+
+For FilesystemTest
+
+>>make -f makefile_Test
+>>./filesystemTest
 
 
