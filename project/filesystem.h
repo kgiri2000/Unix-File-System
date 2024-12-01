@@ -43,6 +43,7 @@ class FileSystem {
   PartitionManager *myPM;
   char myfileSystemName;
   int myfileSystemSize;
+
   /* declare other private members here */
 
   //Open File Entry to store file description at run time
@@ -50,21 +51,25 @@ class FileSystem {
     int fileDesc;
     int rwPointer;
     char mode;
+    int fileInodeBlock;
   };
+
 
   //Vector to store open file table with open file entry object
   std::vector<OpenFileEntry> openFileTable;
+  
 
   //Helper Functions
   bool isValidFileName(const char *filename, int fileLen);
   int allocateBlock();
   void freeBlock(int blknum);
   int findFile(char *filename, int fnameLen, int *parentBlock);
-  int findDirectory(int dirBlock, const char &name);
+  int findDirectory(int dirBlock, char dirName);
   int addEntryToDirectory(int dirBlock, const char &name, int blockPointer, char type);
 
 
   public:
+    int fileDescCounter;
     FileSystem(DiskManager *dm, char fileSystemName);
     int createFile(char *filename, int fnameLen);
     int createDirectory(char *dirname, int dnameLen);
