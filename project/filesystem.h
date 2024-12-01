@@ -14,9 +14,7 @@ struct FileInode{
   int size; //4 bytes
   int direct[3]; //12 bytes
   int indirect; // 4 bytes
-  char time ; //1
-  int direct1[10];
-  char last ;
+  int lockId;
   
 
 };
@@ -52,8 +50,6 @@ class FileSystem {
     int fileDesc;
     int rwPointer;
     char mode;
-    bool isLocked;
-    int lockId;
   };
 
   //Vector to store open file table with open file entry object
@@ -63,7 +59,7 @@ class FileSystem {
   bool isValidFileName(const char *filename, int fileLen);
   int allocateBlock();
   void freeBlock(int blknum);
-  int findFile(int fblock, const char &fname);
+  int findFile(char *filename, int fnameLen, int *parentBlock);
   int findDirectory(int dirBlock, const char &name);
   int addEntryToDirectory(int dirBlock, const char &name, int blockPointer, char type);
 
