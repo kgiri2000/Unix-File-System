@@ -385,14 +385,42 @@ int FileSystem::unlockFile(char *filename, int fnameLen, int lockId)
   return 0; //Success
 }
 
-int FileSystem::deleteFile(char *filename, int fnameLen)
-{
- return -1; //place holder so there is no warnings when compiling.
+int FileSystem::deleteFile(char *filename, int fnameLen) {
+  string fname(filename,fnameLen);
+  //We need to find the file's parent directory block
+  int parentBlock = findFile(1,  fname);
+  if (parentBlock == -1) {
+    return -1; //Not found
+  }
+
+   //If the parent block is not -1, we need to free up the parent block
+  freeBlock(parentBlock);
+  return 0;
 }
 
-int FileSystem::deleteDirectory(char *dirname, int dnameLen)
-{
- return -1; //place holder so there is no warnings when compiling.
+int FileSystem::deleteDirectory(char *dirname, int dnameLen) {
+  string dirName(dirname, dnameLen);
+  //We need to find the directory block that corresponds to given directory name
+  int dirBlock = findDirectory(1, dirName);
+  if (dirBlock == -1) {
+    return -1; //Not found
+  }
+
+    //Now let's read the data into the buffer because if there is a non-empty directory, we want to spit out an error
+  char dirBlockData[64];
+  myPM->readDiskBlock(dirBlock,dirBlockData);
+  DirectoryInode *dir = reinterpret_cast<DirectoryInode*>(dirBlockData);
+
+  //Checking if empty here
+  for (int i = 0; i < 10; ++i) {
+    if (dir->entries[i].entryName != 0) {
+      return -2; // Non-empty directory
+  }
+}
+
+  //Otherwise the directory is empty, so let's free its block
+  freeBlock(dirBlock);
+  return 0;
 }
 
 int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
