@@ -115,7 +115,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
   int currentBlock = 1;
   // Parse the file path to separate the directory path and file name
   char newFileName = filename[fnameLen - 1];
-  cout<<newFileName<<endl;
+  cout << newFileName << endl;
   *parentBlock = -1;
   // Traverse directories in the path
   for (int i = 1; i < fnameLen - 1; i++)
@@ -131,10 +131,10 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     }
   }
   *parentBlock = currentBlock;
-  cout<<currentBlock<<endl;
+  cout << currentBlock << endl;
   while (currentBlock != -1)
   {
-    
+
     char parentBlockdata[64];
     for (int i = 0; i < 64; i++)
       parentBlockdata[i] = '#';
@@ -143,7 +143,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     DirectoryInode *parentDir = reinterpret_cast<DirectoryInode *>(parentBlockdata);
     for (int i = 0; i < 10; i++)
     {
-      cout<<parentDir->entries[i].entryName;
+      cout << parentDir->entries[i].entryName;
       if (parentDir->entries[i].entryName == '0')
         continue;
       if (parentDir->entries[i].entryName == newFileName && parentDir->entries[i].entryType == 'f')
@@ -154,7 +154,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
 
     currentBlock = parentDir->nextDirBlock;
   }
-  cout<<"Coming out of while loop"<<endl;
+  cout << "Coming out of while loop" << endl;
 
   return -2; // No file found
 }
@@ -458,7 +458,7 @@ int FileSystem::deleteFile(char *filename, int fnameLen)
 
   int parentBlock = -1;
   int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
-  cout<<fileInodeBlock<<endl;
+  cout << fileInodeBlock << endl;
   if (fileInodeBlock == -2)
   {
     return -1; // File does not exist
@@ -1303,6 +1303,7 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
   {
     return -1; // Invalid filename
   }
+
   int parentBlock1 = -1;
   int fileInode1 = findFile(filename1, fnameLen1, &parentBlock1);
   if (fileInode1 == -2)
@@ -1310,18 +1311,21 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
     return -2; // File does not exist
   }
 
-  // Check if file 2 already exists
+  // Check if the target filename already exists
   int parentBlock2 = -1;
   int fileInode2 = findFile(filename2, fnameLen2, &parentBlock2);
   if (fileInode2 != -2)
   {
-    return -3; // File with new name already exists
+    return -3; // File with the new name already exists
   }
-  if (fileInode1 == -4 || fileInode2 == -4)
+
+  // Check if parent directories exist
+  if (parentBlock1 == -1 || parentBlock2 == -1)
   {
-    return -5; // Directory does not exist
+    return -5; // Parent directory does not exist
   }
-  // Check if file is opened or locked
+
+  // Check if the file is open or locked
   for (const auto &entry : openFileTable)
   {
     if (entry.fileInodeBlock == fileInode1)
@@ -1329,6 +1333,8 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
       return -4; // File is open
     }
   }
+
+  // Load the file inode to check for locking
   char fileInodeData[64];
   myPM->readDiskBlock(fileInode1, fileInodeData);
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
@@ -1337,26 +1343,50 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
     return -4; // File is locked
   }
 
-  // Update the parent director
+  // Update the parent directory's entry
   int currentBlock = parentBlock1;
+  bool updated = false;
   while (currentBlock != -1)
   {
     char parentBlockData[64];
     myPM->readDiskBlock(currentBlock, parentBlockData);
     DirectoryInode *parentDir = reinterpret_cast<DirectoryInode *>(parentBlockData);
+
     for (int i = 0; i < 10; ++i)
     {
       if (parentDir->entries[i].blockPointer == fileInode1)
       {
+        // Update the directory entry name to the last character of filename2
         parentDir->entries[i].entryName = filename2[fnameLen2 - 1];
 
-        myPM->writeDiskBlock(fileInode1, fileInodeData);
-        return 0;
+        // Write back the updated directory block
+        myPM->writeDiskBlock(currentBlock, parentBlockData);
+        updated = true;
+        break;
       }
     }
+
+    if (updated)
+      break;
+
     currentBlock = parentDir->nextDirBlock;
   }
-  return -5; // Others reasons
+
+  if (!updated)
+  {
+    return -5; // Failed to update the parent directory
+  }
+
+  // Update the file inode's name
+  fileInode->name = filename2[fnameLen2 - 1];
+
+  // Write back the updated file inode block
+  if (myPM->writeDiskBlock(fileInode1, fileInodeData) != 0)
+  {
+    return -5; // Failed to update the file inode
+  }
+
+  return 0; // Success
 }
 
 int FileSystem::renameDirectory(char *dirname1, int dnameLen1, char *dirname2, int dnameLen2)
@@ -1405,7 +1435,7 @@ int FileSystem::renameDirectory(char *dirname1, int dnameLen1, char *dirname2, i
       {
         dir->entries[i].entryName = newDir; // Update directory name
         myPM->writeDiskBlock(currentBlock, dirBlockData);
-        
+
         return 0; // Success
       }
     }
