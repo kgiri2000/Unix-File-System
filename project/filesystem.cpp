@@ -115,7 +115,6 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
   int currentBlock = 1;
   // Parse the file path to separate the directory path and file name
   char newFileName = filename[fnameLen - 1];
-  cout << newFileName << endl;
   *parentBlock = -1;
   // Traverse directories in the path
   for (int i = 1; i < fnameLen - 1; i++)
@@ -131,7 +130,6 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     }
   }
   *parentBlock = currentBlock;
-  cout << currentBlock << endl;
   while (currentBlock != -1)
   {
 
@@ -143,7 +141,6 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     DirectoryInode *parentDir = reinterpret_cast<DirectoryInode *>(parentBlockdata);
     for (int i = 0; i < 10; i++)
     {
-      cout << parentDir->entries[i].entryName;
       if (parentDir->entries[i].entryName == '0')
         continue;
       if (parentDir->entries[i].entryName == newFileName && parentDir->entries[i].entryType == 'f')
@@ -154,7 +151,6 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
 
     currentBlock = parentDir->nextDirBlock;
   }
-  cout << "Coming out of while loop" << endl;
 
   return -2; // No file found
 }
@@ -458,7 +454,6 @@ int FileSystem::deleteFile(char *filename, int fnameLen)
 
   int parentBlock = -1;
   int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
-  cout << fileInodeBlock << endl;
   if (fileInodeBlock == -2)
   {
     return -1; // File does not exist
