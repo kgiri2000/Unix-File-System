@@ -30,7 +30,7 @@ FileSystem::FileSystem(DiskManager *dm, char fileSystemName)
   bool isInitialized = false;
   for (int i = 0; i < 10; i++)
   {
-    if (dirInode->entries[i].entryName != '0')
+    if (dirInode->entries[i].entryName != '#')
     {
       isInitialized = true;
       break;
@@ -54,28 +54,48 @@ FileSystem::FileSystem(DiskManager *dm, char fileSystemName)
 // Need to be worked for alternating promot like /a/b/c and /a/b////c
 bool FileSystem::isValidFileName(const char *filename, int fnameLen)
 {
-  if (fnameLen <= 0 || filename[0] != '/')
-    return false;
-  bool lastWasSlash = false;
+  // Check if the filename is not null and the length is valid
+  if (!filename || fnameLen <= 0)
+  {
+    return false; // Invalid length or null filename
+  }
+
+  // Check if the filename starts with a '/'
+  if (filename[0] != '/')
+  {
+    return false; // Filenames must start with '/'
+  }
+
+  // Alternation flag: true if we expect a letter, false if we expect a '/'
+  bool expectLetter = true;
+
   for (int i = 1; i < fnameLen; ++i)
   {
-    if (filename[i] == '/')
+    char c = filename[i];
+
+    if (expectLetter)
     {
-      if (lastWasSlash)
-        return false; // Reject consecutive slashes
-      lastWasSlash = true;
-    }
-    else if (!((filename[i] >= 'A' && filename[i] <= 'Z') ||
-               (filename[i] >= 'a' && filename[i] <= 'z')))
-    {
-      return false; // Invalid character
+      // Check for alphabetic character
+      if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+      {
+        return false; // Not an alphabetic character where expected
+      }
     }
     else
     {
-      lastWasSlash = false;
+      // Check for '/'
+      if (c != '/')
+      {
+        return false; // Not a '/' where expected
+      }
     }
+
+    // Flip the expectation: letter <-> '/'
+    expectLetter = !expectLetter;
   }
-  return !lastWasSlash; // Reject trailing slash
+
+  // The name must end with a letter, so expectLetter should be false
+  return !expectLetter;
 }
 
 // Allocate the block
@@ -95,6 +115,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
   int currentBlock = 1;
   // Parse the file path to separate the directory path and file name
   char newFileName = filename[fnameLen - 1];
+  cout<<newFileName<<endl;
   *parentBlock = -1;
   // Traverse directories in the path
   for (int i = 1; i < fnameLen - 1; i++)
@@ -110,8 +131,10 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     }
   }
   *parentBlock = currentBlock;
+  cout<<currentBlock<<endl;
   while (currentBlock != -1)
   {
+    
     char parentBlockdata[64];
     for (int i = 0; i < 64; i++)
       parentBlockdata[i] = '#';
@@ -120,6 +143,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
     DirectoryInode *parentDir = reinterpret_cast<DirectoryInode *>(parentBlockdata);
     for (int i = 0; i < 10; i++)
     {
+      cout<<parentDir->entries[i].entryName;
       if (parentDir->entries[i].entryName == '0')
         continue;
       if (parentDir->entries[i].entryName == newFileName && parentDir->entries[i].entryType == 'f')
@@ -130,6 +154,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
 
     currentBlock = parentDir->nextDirBlock;
   }
+  cout<<"Coming out of while loop"<<endl;
 
   return -2; // No file found
 }
@@ -433,7 +458,8 @@ int FileSystem::deleteFile(char *filename, int fnameLen)
 
   int parentBlock = -1;
   int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
-  if (fileInodeBlock == -1)
+  cout<<fileInodeBlock<<endl;
+  if (fileInodeBlock == -2)
   {
     return -1; // File does not exist
   }
@@ -669,15 +695,15 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
   {
     return -4; // Error writing inode block
   }
-    OpenFileEntry newEntry;
-    newEntry.fileDesc = fileDesc;
-    newEntry.mode = mode;
-    newEntry.rwPointer = 0; // Initially
-    newEntry.fileInodeBlock = fileInodeBlock;
+  OpenFileEntry newEntry;
+  newEntry.fileDesc = fileDesc;
+  newEntry.mode = mode;
+  newEntry.rwPointer = 0; // Initially
+  newEntry.fileInodeBlock = fileInodeBlock;
 
-    // Add entry to open file table
-    openFileTable.push_back(newEntry);
-    return fileDesc;
+  // Add entry to open file table
+  openFileTable.push_back(newEntry);
+  return fileDesc;
 }
 
 int FileSystem::closeFile(int fileDesc)
@@ -1279,7 +1305,7 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
   }
   int parentBlock1 = -1;
   int fileInode1 = findFile(filename1, fnameLen1, &parentBlock1);
-  if (fileInode1 == -1 || fileInode1 == -2)
+  if (fileInode1 == -2)
   {
     return -2; // File does not exist
   }
@@ -1323,7 +1349,8 @@ int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int 
       if (parentDir->entries[i].blockPointer == fileInode1)
       {
         parentDir->entries[i].entryName = filename2[fnameLen2 - 1];
-        myPM->writeDiskBlock(parentBlock1, parentBlockData);
+
+        myPM->writeDiskBlock(fileInode1, fileInodeData);
         return 0;
       }
     }
@@ -1378,6 +1405,7 @@ int FileSystem::renameDirectory(char *dirname1, int dnameLen1, char *dirname2, i
       {
         dir->entries[i].entryName = newDir; // Update directory name
         myPM->writeDiskBlock(currentBlock, dirBlockData);
+        
         return 0; // Success
       }
     }
@@ -1405,17 +1433,16 @@ int FileSystem::getAttribute(char *filename, int fnameLen, time_t *creationTime,
     return -3;
   }
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
-  if (creationTime){
+  if (creationTime)
+  {
     *creationTime = fileInode->creationTime;
-
   }
 
-  if (openCount){
+  if (openCount)
+  {
     *openCount = fileInode->openCount;
-
   }
   return 0;
-
 }
 
 int FileSystem::setAttribute(char *filename, int fnameLen, time_t *newCreationTime, int *newOpenCount)

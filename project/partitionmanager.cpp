@@ -18,17 +18,15 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   char buffer[64];
   for(int i = 0; i< 64; i++)buffer[i] = '0';
   buffer[64] = '\0';
-  myDM->writeDiskBlock(myPartitionName, 1, buffer);
+  //myDM->writeDiskBlock(myPartitionName, 1, buffer);
 
 
-  // int readResult = myDM->readDiskBlock(myPartitionName, 0, buffer);
-
-  // if(buffer[0] != '#'){
-  //   myBV->setBitVector(reinterpret_cast<unsigned int*> (buffer));
-  // }else{
-  //   myBV->getBitVector(reinterpret_cast<unsigned int*>(buffer));
-  //   myDM->writeDiskBlock(partitionname,1,buffer);
-  // }
+  int readResult = myDM->readDiskBlock(myPartitionName, 0, buffer);
+  if(buffer[0] == '#'){
+  }else{
+    myDM->readDiskBlock(myPartitionName,0,buffer);
+    myBV->setBitVector((unsigned int*) buffer);
+  }
   
 
 }

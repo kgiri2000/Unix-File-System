@@ -12,6 +12,7 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
   int r = myDisk->initDisk();
   char buffer[64];
   for (int j = 0; j < 64; j++) buffer[j] = '#';
+  buffer[64] = '\0';
 
   /* If needed, initialize the disk to keep partition information */
   diskP = new DiskPartition[partCount];
@@ -22,7 +23,6 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
     //Storing it it on the buffer
     memcpy(buffer, diskP, sizeof(DiskPartition)* partCount);
     //Prepare to store the partation information(block 0 in the disk)
-
     myDisk->writeDiskBlock(0, buffer);
   }else{
     //Disk already exists, read the partation table from the super block

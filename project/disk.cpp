@@ -27,6 +27,7 @@ int Disk::initDisk()
       cerr << "Error: Cannot create disk file" << endl;
       return(-1);
     }
+    cout<<"Initializing disk with # from Disk.cpp"<<endl;
     for (int i = 0; i < diskSize; i++) f.put('#');
     f.close();
     return(1);
