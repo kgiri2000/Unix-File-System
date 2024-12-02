@@ -97,7 +97,7 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
       currentBlock = findDirectory(currentBlock, dirname);
       if (currentBlock == -1)
       {
-        return -1; // Directory doesnot exist
+        return -4; // Directory doesnot exist
       }
       
     }
@@ -159,10 +159,6 @@ int FileSystem::findDirectory(int dirBlock, char dirName)
 // Function to add entry to Directory
 int FileSystem::addEntryToDirectory(int dirBlock, const char &name, int blockPointer, char type)
 {
-  cout<<"Dir Block: "<<dirBlock<<endl;
-  cout<< "Name" << name<<endl;
-  cout<<"BlockPointer: " << blockPointer<<endl;
-  cout<<"Type: "<<type<<endl;
   while (true)
   {
     
@@ -179,9 +175,7 @@ int FileSystem::addEntryToDirectory(int dirBlock, const char &name, int blockPoi
         dir->entries[i].entryName = name;
         dir->entries[i].blockPointer = blockPointer;
         dir->entries[i].entryType = type;
-        cout << "Writing in the directory" << endl;
         myPM->writeDiskBlock(dirBlock, dirBlockData);
-        cout << "Writing success" << endl;
         return 0; // Success
       }
     }
@@ -234,14 +228,11 @@ int FileSystem::createFile(char *filename, int fnameLen)
   }
   
   int parentBlock = -1;
-  cout<<"parent block before: "<<parentBlock<<endl;
   // Check if file already exists
   int result = findFile(filename, fnameLen, &parentBlock);
-
-  cout<<"parent block after: "<<parentBlock<<endl;
-  if (result == -1)
+  if (result == -4)
   {
-    return -1; // Directory doesn't exist
+    return -4; // Directory doesn't exist
   }
   if (result != -2)
   {
@@ -257,7 +248,6 @@ int FileSystem::createFile(char *filename, int fnameLen)
   {
     return -2; // Space not available
   }
-  cout << "\nFile i-node: " << fileInodeBlock << endl;
   // Initialize the file i-node
   char inodeBlock[64];
   for (int i = 0; i < 64; i++)
@@ -272,9 +262,6 @@ int FileSystem::createFile(char *filename, int fnameLen)
   fileInode->lockId = -1; // Initializing the lock id = -1 (unlocked)
 
   myPM->writeDiskBlock(fileInodeBlock, inodeBlock);
-  cout << "After Writing" << endl;
-  // Add an entry in the parent directory
-  cout << "Adding to the directory" << endl;
   int result1 = addEntryToDirectory(currentBlock, newFileName, fileInodeBlock, 'f');
 
   if (result1 != 0)
@@ -282,7 +269,6 @@ int FileSystem::createFile(char *filename, int fnameLen)
     freeBlock(fileInodeBlock);
     return -2; // Directory full
   }
-  cout << "File Created" << endl;
   return 0; // File Created
 }
 
@@ -303,7 +289,7 @@ int FileSystem::createDirectory(char *dirname, int dnameLen)
       parentBlock = findDirectory(parentBlock, dirName);
       if (parentBlock == -1)
       {
-        return -1; // Directory does not exist
+        return -4; // Directory does not exist
       }
     }
   }
@@ -333,8 +319,6 @@ int FileSystem::createDirectory(char *dirname, int dnameLen)
   }
   newDir1->nextDirBlock = -1; // No further overflow yet
   myPM->writeDiskBlock(newBlock, newDirBlock);
-
-  cout << "Adding to the directory" << endl;
   int result = addEntryToDirectory(parentBlock, newDirName, newBlock, 'd');
 
   if (result != 0)
@@ -342,7 +326,6 @@ int FileSystem::createDirectory(char *dirname, int dnameLen)
     freeBlock(newBlock);
     return -2; // Directory Full
   }
-  cout << "Directory Created From File System" << endl;
   return (0);
 }
 
@@ -350,6 +333,7 @@ int FileSystem::lockFile(char *filename, int fnameLen)
 {
   if (!isValidFileName(filename, fnameLen))
   {
+
     return -4; // Invalid filename
   }
   int parentBlock = -1;
@@ -368,6 +352,7 @@ int FileSystem::lockFile(char *filename, int fnameLen)
   fileInodeDataBlock[64] = '\0';
   if (myPM->readDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
   {
+
     return -4; // Error reading parent block
   }
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
@@ -409,9 +394,12 @@ int FileSystem::unlockFile(char *filename, int fnameLen, int lockId)
   fileInodeDataBlock[64] = '\0';
   if (myPM->readDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
   {
-    return -4; // Error reading parent block
+    return -2; // Error reading parent block
   }
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
+  if(lockId > 0 && fileInode->lockId == -1){
+    return -2; //File already locked
+  }
 
   if (lockId != fileInode->lockId)
   {
@@ -508,9 +496,9 @@ int FileSystem::deleteFile(char *filename, int fnameLen)
   {
     if (parentDir->entries[i].blockPointer == fileInodeBlock)
     {
-      parentDir->entries[i].entryName = 0; // Clear the entry
+      parentDir->entries[i].entryName = '0'; // Clear the entry
       parentDir->entries[i].blockPointer = -1;
-      parentDir->entries[i].entryType = 0;
+      parentDir->entries[i].entryType = '0';
       myPM->writeDiskBlock(parentBlock, parentBlockData);
       return 0; // File deleted successfully
     }
@@ -526,12 +514,26 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen)
     return -3; // Invalid directory name
   }
 
-  int parentBlock = -1;
-  int dirBlock = findDirectory(parentBlock, dirname[1]); // Find the target directory block
+  int parentBlock = 1;
+  char dirToDelete = dirname[dnameLen - 1];
+  for (int i = 1; i < dnameLen - 1; ++i)
+  {
+    if (dirname[i] == '/')
+    {
+      char dirName = dirname[i - 1];
+      parentBlock = findDirectory(parentBlock, dirName);
+      if (parentBlock == -1)
+      {
+        return -4; // Directory  doesn't exist
+      }
+    }
+  }
+
+  int dirBlock = findDirectory(parentBlock, dirToDelete); // Find the target directory block
 
   if (dirBlock == -1)
   {
-    return -1; // Directory does not exist
+    return -1; // Dir  doesn't exist
   }
 
   // Check if the directory is empty
@@ -554,6 +556,7 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen)
 
   // Handle overflow blocks
   int currentBlock = dir->nextDirBlock;
+  vector<int> overflowBlocks;
   while (currentBlock != -1)
   {
     int nextBlock;
@@ -564,9 +567,18 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen)
     }
 
     DirectoryInode *overflowDir = reinterpret_cast<DirectoryInode *>(overflowBlockData);
+    for(int i =0; i< 10; ++i){
+      if(overflowDir->entries->entryName != '0'){
+        return -2; //Directory not empty
+      }
+    }
     nextBlock = overflowDir->nextDirBlock;
-    freeBlock(currentBlock); // Free the overflow block
+    overflowBlocks.push_back(nextBlock);
     currentBlock = nextBlock;
+  }
+  //Deallocate all blocks
+  for(int block: overflowBlocks){
+    freeBlock(block);
   }
 
   // Free the main directory block itself
@@ -605,23 +617,23 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
   {
     return -2; // Invalid mode
   }
-  int parentBlock = -1;
+  int parentBlock = 1;
   int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
   if (fileInodeBlock == -1)
   {
     return -1; // File doesn't exist
   }
+
   char fileInodeDataBlock[64];
   for (int i = 0; i > 64; i++)
     fileInodeDataBlock[i] = '#';
   fileInodeDataBlock[64] = '\0';
-  if (myPM->readDiskBlock(parentBlock, fileInodeDataBlock) != 0)
+  if (myPM->readDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
   {
     return -4; // Error reading parent block
   }
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
 
-  // Lock check
   if (fileInode->lockId != -1)
   {
     if (fileInode->lockId != lockId)
@@ -636,7 +648,6 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
       return -3; // File is not locked, invalid lock ID
     }
   }
-
   // Create a new file descriptor
   int fileDesc = fileDescCounter++; // Based on the table size
   // Everytime I open the file
@@ -694,6 +705,10 @@ int FileSystem::readFile(int fileDesc, char *data, int len)
       /// Perform read operations using the rw Pointer
       int bytesRead = 0;
       char fileDataBlock[64];
+      for(int i = 0; i< 64; i++)fileDataBlock[i] = '#';
+      fileDataBlock[64] = '\0';
+      cout<<"Size of file: "<<fileInode->size<<endl;
+      cout<<"Size of rw pointer: "<<entry.rwPointer<<endl;
       while (bytesRead < len && entry.rwPointer < fileInode->size)
       {
         int blockOffset = entry.rwPointer % 64; // where to start in the block
@@ -734,6 +749,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len)
           }
         }
         // Copy data from the block into the buffer
+        cout<<"Copying the file"<<endl;
         for (; blockOffset < 64 && bytesRead < len && entry.rwPointer < fileInode->size; ++blockOffset, ++bytesRead)
         {
           data[bytesRead] = fileDataBlock[blockOffset];
