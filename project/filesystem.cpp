@@ -11,10 +11,6 @@
 #include <atomic>
 using namespace std;
 
-map<string, int> fLocks;   // For locking and unlocking the files, we will need to map the file name tot he lock number
-mutex fLocksMut;           // For protecting the fLocks map
-atomic<int> lockNumGen{1}; // Atomic way of getting unique lock numbers
-
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName)
 {
   myDM = dm;
@@ -31,15 +27,27 @@ FileSystem::FileSystem(DiskManager *dm, char fileSystemName)
   myPM->readDiskBlock(1, rootDirBlock);
   // Setting root directory pointer to -1 for now
   DirectoryInode *dirInode = reinterpret_cast<DirectoryInode *>(rootDirBlock);
-  dirInode->nextDirBlock = -1; // No overflow block
+  bool isInitialized = false;
   for (int i = 0; i < 10; i++)
   {
-    dirInode->entries[i].entryName = '0'; // Empty slot
-    dirInode->entries[i].entryType = '0'; // Undefined
-    dirInode->entries[i].blockPointer = -1;
+    if (dirInode->entries[i].entryName != '0')
+    {
+      isInitialized = true;
+      break;
+    }
   }
-  // Everything is 0 except the block pointer
-  myPM->writeDiskBlock(1, rootDirBlock);
+  if (!isInitialized)
+  {
+    dirInode->nextDirBlock = -1; // No overflow block
+    for (int i = 0; i < 10; i++)
+    {
+      dirInode->entries[i].entryName = '0'; // Empty slot
+      dirInode->entries[i].entryType = '0'; // Undefined
+      dirInode->entries[i].blockPointer = -1;
+    }
+    // Everything is 0 except the block pointer
+    myPM->writeDiskBlock(1, rootDirBlock);
+  }
 }
 
 // Check the valid fileName
@@ -259,6 +267,8 @@ int FileSystem::createFile(char *filename, int fnameLen)
   std::fill(std::begin(fileInode->direct), std::end(fileInode->direct), -1);
   fileInode->indirect = -1;
   fileInode->lockId = -1; // Initializing the lock id = -1 (unlocked)
+  fileInode->creationTime = time(nullptr);
+  fileInode->openCount = 0;
 
   myPM->writeDiskBlock(fileInodeBlock, inodeBlock);
   int result1 = addEntryToDirectory(currentBlock, newFileName, fileInodeBlock, 'f');
@@ -654,15 +664,20 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
   // Create a new file descriptor
   int fileDesc = fileDescCounter++; // Based on the table size
   // Everytime I open the file
-  OpenFileEntry newEntry;
-  newEntry.fileDesc = fileDesc;
-  newEntry.mode = mode;
-  newEntry.rwPointer = 0; // Initially
-  newEntry.fileInodeBlock = fileInodeBlock;
+  fileInode->openCount++;
+  if (myPM->writeDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
+  {
+    return -4; // Error writing inode block
+  }
+    OpenFileEntry newEntry;
+    newEntry.fileDesc = fileDesc;
+    newEntry.mode = mode;
+    newEntry.rwPointer = 0; // Initially
+    newEntry.fileInodeBlock = fileInodeBlock;
 
-  // Add entry to open file table
-  openFileTable.push_back(newEntry);
-  return fileDesc;
+    // Add entry to open file table
+    openFileTable.push_back(newEntry);
+    return fileDesc;
 }
 
 int FileSystem::closeFile(int fileDesc)
@@ -912,7 +927,6 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
   {
     return -2; // Invalid length
   }
-  
 
   // Find the open file entry in the OFT
   for (auto &entry : openFileTable)
@@ -929,7 +943,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
       char fileInodeDataBlock[64];
       if (myPM->readDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
       {
-        return -4; // Error reading file inode block
+        return -3; // Error reading file inode block
       }
 
       FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
@@ -954,14 +968,14 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
             fileInode->direct[blockNumber] = allocateBlock(); // Allocate a new block
             if (fileInode->direct[blockNumber] == -1)
             {
-              return -4; // No space left
+              return -3; // No space left
             }
           }
 
           // Read the block to avoid overwriting existing data
           if (myPM->readDiskBlock(fileInode->direct[blockNumber], fileDataBlock) != 0)
           {
-            return -4; // Error reading block
+            return -3; // Error reading block
           }
         }
         // Handle indirect block allocation and writing
@@ -972,7 +986,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
             fileInode->indirect = allocateBlock(); // Allocate indirect block if needed
             if (fileInode->indirect == -1)
             {
-              return -4; // No space left
+              return -3; // No space left
             }
 
             // Initialize the indirect block
@@ -980,7 +994,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
             std::fill_n(reinterpret_cast<int *>(indirectBlockData), 16, -1); // Initialize pointers
             if (myPM->writeDiskBlock(fileInode->indirect, indirectBlockData) != 0)
             {
-              return -4; // Error writing indirect block
+              return -3; // Error writing indirect block
             }
           }
 
@@ -988,7 +1002,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
           char indirectBlockData[64];
           if (myPM->readDiskBlock(fileInode->indirect, indirectBlockData) != 0)
           {
-            return -4; // Error reading indirect block
+            return -3; // Error reading indirect block
           }
 
           // Find the correct pointer within the indirect block
@@ -1001,20 +1015,20 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
             *dataBlockPointer = allocateBlock();
             if (*dataBlockPointer == -1)
             {
-              return -4; // No space left
+              return -3; // No space left
             }
 
             // Write the updated indirect block back to disk
             if (myPM->writeDiskBlock(fileInode->indirect, indirectBlockData) != 0)
             {
-              return -4; // Error writing indirect block
+              return -3; // Error writing indirect block
             }
           }
 
           // Read the data block pointed to by the indirect block
           if (myPM->readDiskBlock(*dataBlockPointer, fileDataBlock) != 0)
           {
-            return -4; // Error reading data block
+            return -3; // Error reading data block
           }
         }
 
@@ -1030,7 +1044,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
         {
           if (myPM->writeDiskBlock(fileInode->direct[blockNumber], fileDataBlock) != 0)
           {
-            return -4; // Error writing direct block
+            return -3; // Error writing direct block
           }
         }
         else
@@ -1038,13 +1052,13 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
           char indirectBlockData[64];
           if (myPM->readDiskBlock(fileInode->indirect, indirectBlockData) != 0)
           {
-            return -4; // Error reading indirect block
+            return -3; // Error reading indirect block
           }
           int indirectPointerIndex = blockNumber - 3;
           int *dataBlockPointer = reinterpret_cast<int *>(indirectBlockData) + indirectPointerIndex;
           if (myPM->writeDiskBlock(*dataBlockPointer, fileDataBlock) != 0)
           {
-            return -4; // Error writing indirect block
+            return -3; // Error writing indirect block
           }
         }
 
@@ -1055,7 +1069,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
       // Write the updated inode block back to disk
       if (myPM->writeDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
       {
-        return -4; // Error writing file inode block
+        return -3; // Error writing file inode block
       }
 
       return bytesAppended; // Return number of bytes appended
@@ -1230,14 +1244,15 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag)
       {
         if (offset < 0 || offset > fileSize)
         {
-          if(offset < 0){
-            return -1; //Incorrect offset value.
+          if (offset < 0)
+          {
+            return -1; // Incorrect offset value.
           }
           return -2; // Out of bounds
         }
         entry.rwPointer = offset;
       }
-      else// Relative positioning
+      else // Relative positioning
       {
         int newPointer = rwPointer + offset;
         if (newPointer < 0 || newPointer > fileSize)
@@ -1372,12 +1387,68 @@ int FileSystem::renameDirectory(char *dirname1, int dnameLen1, char *dirname2, i
   return -4;
 }
 
-int FileSystem::getAttribute(char *filename, int fnameLen /* ... and other parameters as needed */)
+int FileSystem::getAttribute(char *filename, int fnameLen, time_t *creationTime, int *openCount)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  if (!isValidFileName(filename, fnameLen))
+  {
+    return -1; // Invalid filename
+  }
+  int parentBlock = -1;
+  int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
+  if (fileInodeBlock == -1)
+  {
+    return -2;
+  }
+  char fileInodeData[64];
+  if (myPM->readDiskBlock(fileInodeBlock, fileInodeData) != 0)
+  {
+    return -3;
+  }
+  FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
+  if (creationTime){
+    *creationTime = fileInode->creationTime;
+
+  }
+
+  if (openCount){
+    *openCount = fileInode->openCount;
+
+  }
+  return 0;
+
 }
 
-int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */)
+int FileSystem::setAttribute(char *filename, int fnameLen, time_t *newCreationTime, int *newOpenCount)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  if (!isValidFileName(filename, fnameLen))
+  {
+    return -1; // Invalid filename
+  }
+
+  int parentBlock = -1;
+  int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
+  if (fileInodeBlock == -1)
+  {
+    return -2; // File does not exist
+  }
+
+  char fileInodeData[64];
+  if (myPM->readDiskBlock(fileInodeBlock, fileInodeData) != 0)
+  {
+    return -3; // Error reading inode block
+  }
+
+  FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
+
+  // Update attributes
+  fileInode->openCount = *newOpenCount;
+  fileInode->creationTime = *newCreationTime;
+
+  // Write updated inode back
+  if (myPM->writeDiskBlock(fileInodeBlock, fileInodeData) != 0)
+  {
+    return -4; // Error writing inode block
+  }
+
+  return 0; // Success
 }

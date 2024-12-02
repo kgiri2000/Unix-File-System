@@ -15,6 +15,8 @@ struct FileInode{
   int direct[3]; //12 bytes
   int indirect; // 4 bytes
   int lockId;
+  time_t creationTime;
+  int openCount;
   
 
 };
@@ -86,8 +88,8 @@ class FileSystem {
     int truncFile(int fileDesc, int offset, int flag);
     int renameFile(char *filename1, int fnameLen1, char *filename2, int fnameLen2);
     int renameDirectory(char *dirname1, int dnameLen1, char *dirname2, int dnameLen2);
-    int getAttribute(char *filename, int fnameLen /* ... and other parameters as needed */);
-    int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */);
+    int getAttribute(char *filename, int fnameLen, time_t *creationCount, int *openCount);
+    int setAttribute(char *filename, int fnameLen, time_t *creationCount, int *openCount);
 
     /* declare other public members here */
     

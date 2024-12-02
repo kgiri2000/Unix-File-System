@@ -35,7 +35,7 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
 
 }
 DiskManager::~DiskManager(){
-  delete diskP;
+  delete [] diskP;
 }
 
 /*

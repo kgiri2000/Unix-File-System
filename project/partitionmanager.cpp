@@ -11,26 +11,33 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
   myDM = dm;
   myPartitionName = partitionname;
   myPartitionSize = myDM->getPartitionSize(myPartitionName);
-  /* If needed, initialize bit vector to keep track of free and allocted
-     blocks in this partition */
-  myBV = new BitVector(myPartitionSize);
+
+  myBV = new BitVector(myPartitionSize);  
+
+  // First, check if the partition's superblock has been initialized
+  char buffer[64];
+  for(int i = 0; i< 64; i++)buffer[i] = '0';
+  buffer[64] = '\0';
+  myDM->writeDiskBlock(myPartitionName, 1, buffer);
+
+
+  // int readResult = myDM->readDiskBlock(myPartitionName, 0, buffer);
+
+  // if(buffer[0] != '#'){
+  //   myBV->setBitVector(reinterpret_cast<unsigned int*> (buffer));
+  // }else{
+  //   myBV->getBitVector(reinterpret_cast<unsigned int*>(buffer));
+  //   myDM->writeDiskBlock(partitionname,1,buffer);
+  // }
   
-  // char buffer[64];
-  // for (int j = 0; j < 64; j++) buffer[j] = '#';
-  // buffer[64] = '\0';
-  // cout<<"Initial buffer: "<<buffer<<endl;
-  // myBV->getBitVector((unsigned int *)buffer);
-  // myDM->writeDiskBlock(myPartitionName, 0, buffer);
-  // cout<<"Bit Vector Buffer: "<<buffer<<endl;
-  char buffer1[64];
-  for (int j = 0; j < 64; j++) buffer1[j] = '0';
-  myDM->writeDiskBlock(myPartitionName, 1, buffer1);
+
 }
+
 
 PartitionManager::~PartitionManager()
 {
   //we can try saving bitVector back to block zero before deleting
-  delete myBV;
+  delete []myBV;
  
 }
 
