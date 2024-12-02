@@ -26,8 +26,14 @@ int main()
 
   DiskManager *dm = new DiskManager(d, 4, dp);
   FileSystem *fs1 = new FileSystem(dm, 'A');
-  int res;
+  int res,r;
   Client *c1 = new Client(fs1);
+  cout <<"begin driver 2\n";
+  cout <<"\nDid the data survive on the disk?\n";
+  r = c1->myFS->createFile(const_cast<char *>("/A"), 2);
+  cout << "rv from createFile /A fs1 is " << r <<(r==-1 ? " correct ": " fail") <<endl;
+  r = c1->myFS->createFile(const_cast<char *>("/B"), 2);
+  cout << "rv from createFile /B fs1 is " << r <<(r==-1 ? " correct ": " fail") <<endl;
   cout<<"Creating Files and Directories"<<endl;
   res=c1->myFS->createDirectory(const_cast<char *>("/d"),2);
   cout<<"Create Directory d:"<< (res == 0? "Success": "Failure")<<endl;
@@ -149,8 +155,47 @@ int main()
     message[i] = '#';
   }
   
-  res = c1->myFS->readFile(fd, message,  64);
-  cout<<"File Read: " <<res<<(res == 64? " Success": " Failure")<<endl;
+
+  //Closing this file
+  res = c1->myFS->closeFile(fd);
+  cout<<"File Closed: " <<res<<(res== 0? " Success": " Failure")<<endl;
+
+  fd = c1->myFS->openFile(const_cast<char *>("/e"),2, 'm', l );
+  cout<<"File Opened: " <<fd<<(fd>0? " Success": " Failure")<<endl;
+
+  res = c1->myFS->readFile(fd, message,  5);
+  cout<<"File Read: " <<res<<(res == 5? " Success": " Failure")<<endl;
+
+  res = c1->myFS->readFile(fd, message,  5);
+  cout<<"File Read: " <<res<<(res == 5? " Success": " Failure")<<endl;
+
+  res = c1->myFS->writeFile(fd, hello1,  5);
+  cout<<"File Written: " <<res<<(res == 5? " Success": " Failure")<<endl;
+
+  //Seek 
+  res = c1->myFS->seekFile(fd, 5, 5);
+  cout<<"File seek at 5 "<< res <<(res == 0? "Success" : "Failure")<<endl;
+
+  res = c1->myFS->writeFile(fd, hello1,  5);
+  cout<<"File Written: " <<res<<(res == 5? " Success": " Failure")<<endl;
+
+  res = c1->myFS->seekFile(fd, 600, 5);
+  cout<<"File seek at 600 "<< res <<(res == -2? "Success" : "Failure")<<endl;
+
+  res = c1->myFS->seekFile(fd, 10, 0);
+  cout<<"File seek at 15 "<< res <<(res == 0? "Success" : "Failure")<<endl;
+
+  res = c1->myFS->writeFile(fd, hello1,  5);
+  cout<<"File Written: " <<res<<(res == 5? " Success": " Failure")<<endl;
+
+  res = c1->myFS->seekFile(fd, -30, 0);
+  cout<<"File seek at -5 "<< res <<(res == -2? "Success" : "Failure")<<endl;
+
+
+
+
+
+
 
 
 

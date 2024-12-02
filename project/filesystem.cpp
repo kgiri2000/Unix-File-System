@@ -99,7 +99,6 @@ int FileSystem::findFile(char *filename, int fnameLen, int *parentBlock)
       {
         return -4; // Directory doesnot exist
       }
-      
     }
   }
   *parentBlock = currentBlock;
@@ -161,7 +160,7 @@ int FileSystem::addEntryToDirectory(int dirBlock, const char &name, int blockPoi
 {
   while (true)
   {
-    
+
     char dirBlockData[64];
     for (int i = 0; i < 64; i++)
       dirBlockData[i] = '#';
@@ -226,7 +225,7 @@ int FileSystem::createFile(char *filename, int fnameLen)
   {
     return -3; // Invalid filename
   }
-  
+
   int parentBlock = -1;
   // Check if file already exists
   int result = findFile(filename, fnameLen, &parentBlock);
@@ -397,8 +396,9 @@ int FileSystem::unlockFile(char *filename, int fnameLen, int lockId)
     return -2; // Error reading parent block
   }
   FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
-  if(lockId > 0 && fileInode->lockId == -1){
-    return -2; //File already locked
+  if (lockId > 0 && fileInode->lockId == -1)
+  {
+    return -2; // File already locked
   }
 
   if (lockId != fileInode->lockId)
@@ -567,17 +567,20 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen)
     }
 
     DirectoryInode *overflowDir = reinterpret_cast<DirectoryInode *>(overflowBlockData);
-    for(int i =0; i< 10; ++i){
-      if(overflowDir->entries->entryName != '0'){
-        return -2; //Directory not empty
+    for (int i = 0; i < 10; ++i)
+    {
+      if (overflowDir->entries->entryName != '0')
+      {
+        return -2; // Directory not empty
       }
     }
     nextBlock = overflowDir->nextDirBlock;
     overflowBlocks.push_back(nextBlock);
     currentBlock = nextBlock;
   }
-  //Deallocate all blocks
-  for(int block: overflowBlocks){
+  // Deallocate all blocks
+  for (int block : overflowBlocks)
+  {
     freeBlock(block);
   }
 
@@ -611,7 +614,7 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
 {
   if (!isValidFileName(filename, fnameLen))
   {
-    return -1; // Invalid file name or doesn't exist
+    return -4; // Invalid file name or doesn't exist
   }
   if (mode != 'r' && mode != 'w' && mode != 'm')
   {
@@ -619,7 +622,7 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId)
   }
   int parentBlock = 1;
   int fileInodeBlock = findFile(filename, fnameLen, &parentBlock);
-  if (fileInodeBlock == -1)
+  if (fileInodeBlock == -2)
   {
     return -1; // File doesn't exist
   }
@@ -705,10 +708,9 @@ int FileSystem::readFile(int fileDesc, char *data, int len)
       /// Perform read operations using the rw Pointer
       int bytesRead = 0;
       char fileDataBlock[64];
-      for(int i = 0; i< 64; i++)fileDataBlock[i] = '#';
+      for (int i = 0; i < 64; i++)
+        fileDataBlock[i] = '#';
       fileDataBlock[64] = '\0';
-      cout<<"Size of file: "<<fileInode->size<<endl;
-      cout<<"Size of rw pointer: "<<entry.rwPointer<<endl;
       while (bytesRead < len && entry.rwPointer < fileInode->size)
       {
         int blockOffset = entry.rwPointer % 64; // where to start in the block
@@ -749,7 +751,6 @@ int FileSystem::readFile(int fileDesc, char *data, int len)
           }
         }
         // Copy data from the block into the buffer
-        cout<<"Copying the file"<<endl;
         for (; blockOffset < 64 && bytesRead < len && entry.rwPointer < fileInode->size; ++blockOffset, ++bytesRead)
         {
           data[bytesRead] = fileDataBlock[blockOffset];
@@ -911,6 +912,7 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
   {
     return -2; // Invalid length
   }
+  
 
   // Find the open file entry in the OFT
   for (auto &entry : openFileTable)
@@ -918,6 +920,10 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
     if (entry.fileDesc == filedesc)
     {
       int fileInodeBlock = entry.fileInodeBlock;
+      if (entry.mode != 'w' && entry.mode != 'm')
+      {
+        return -3; // Operation not permitted
+      }
 
       // Read the file's inode block
       char fileInodeDataBlock[64];
@@ -1061,22 +1067,309 @@ int FileSystem::appendFile(int filedesc, char *data, int length)
 
 int FileSystem::truncFile(int fileDesc, int offset, int flag)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  for (auto &entry : openFileTable)
+  {
+    if (entry.fileDesc == fileDesc)
+    {
+      // Ensure the mode is not read-only
+      if (entry.mode == 'r')
+      {
+        return -3; // Cannot truncate in read-only mode
+      }
+
+      char fileInodeData[64];
+      if (myPM->readDiskBlock(entry.fileInodeBlock, fileInodeData) != 0)
+      {
+        return -1; // Error reading file inode block
+      }
+
+      FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
+      int rwPointer = entry.rwPointer;
+      int fileSize = fileInode->size;
+
+      // Calculate truncation pointer
+      int truncPointer = (flag == 0) ? rwPointer + offset : offset;
+      if (flag != 0 && flag != 1)
+      {
+        return -1; // Invalid flag
+      }
+
+      // Validate truncation pointer
+      if (truncPointer < 0 || truncPointer > fileSize)
+      {
+        return -2; // Pointer out of bounds
+      }
+
+      // Calculate bytes to delete
+      int bytesDeleted = fileSize - truncPointer;
+
+      // Handle truncation in direct blocks
+      for (int i = 0; i < 3; ++i)
+      {
+        int blockNumber = fileInode->direct[i];
+        if (blockNumber == -1)
+        {
+          continue; // Skip unallocated blocks
+        }
+
+        if (truncPointer <= (i + 1) * 64)
+        {
+          // Truncate within this block
+          int start = truncPointer - (i * 64);
+          char buffer[64];
+          myPM->readDiskBlock(blockNumber, buffer);
+
+          // Clear bytes after the truncation point
+          for (int j = start; j < 64; ++j)
+          {
+            buffer[j] = '#';
+          }
+          myPM->writeDiskBlock(blockNumber, buffer);
+
+          // Free remaining direct blocks
+          for (int j = i + 1; j < 3; ++j)
+          {
+            int toFree = fileInode->direct[j];
+            if (toFree != -1)
+            {
+              myPM->returnDiskBlock(toFree);
+              fileInode->direct[j] = -1; // Reset block reference
+            }
+          }
+          break; // Direct truncation complete
+        }
+      }
+
+      // Handle truncation in indirect blocks if necessary
+      if (truncPointer > 3 * 64)
+      {
+        int indirectBlock = fileInode->indirect;
+        if (indirectBlock != -1)
+        {
+          char indirectBlockData[64];
+          myPM->readDiskBlock(indirectBlock, indirectBlockData);
+          int *indirectPointers = reinterpret_cast<int *>(indirectBlockData);
+
+          for (size_t i = 0; i < 64 / sizeof(int); ++i)
+          {
+            int blockNumber = indirectPointers[i];
+            if (blockNumber == -1)
+            {
+              continue; // Skip unallocated blocks
+            }
+
+            if (truncPointer <= static_cast<int>((3 + i + 1) * 64))
+            {
+              // Truncate within this block
+              int start = truncPointer - (3 + i) * 64;
+              char buffer[64];
+              myPM->readDiskBlock(blockNumber, buffer);
+
+              // Clear bytes after the truncation point
+              for (int j = start; j < 64; ++j)
+              {
+                buffer[j] = '#';
+              }
+              myPM->writeDiskBlock(blockNumber, buffer);
+
+              // Free remaining blocks in the indirect block
+              for (size_t j = i + 1; j < 64 / sizeof(int); ++j)
+              {
+                int toFree = indirectPointers[j];
+                if (toFree != -1)
+                {
+                  myPM->returnDiskBlock(toFree);
+                  indirectPointers[j] = -1; // Reset block reference
+                }
+              }
+
+              // Write updated indirect block back to disk
+              myPM->writeDiskBlock(indirectBlock, indirectBlockData);
+              break;
+            }
+          }
+        }
+      }
+
+      // Update file size and rwPointer
+      fileInode->size = truncPointer;
+      entry.rwPointer = truncPointer;
+
+      // Write updated inode back to disk
+      myPM->writeDiskBlock(entry.fileInodeBlock, fileInodeData);
+
+      return bytesDeleted; // Return number of bytes truncated
+    }
+  }
+  return -1; // File descriptor not found
 }
 
 int FileSystem::seekFile(int fileDesc, int offset, int flag)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  // Loop through the open file table to find the file descriptor
+  for (auto &entry : openFileTable)
+  {
+    if (entry.fileDesc == fileDesc)
+    {
+      int fileInodeBlock = entry.fileInodeBlock;
+
+      // Read the file's inode block
+      char fileInodeDataBlock[64];
+      if (myPM->readDiskBlock(fileInodeBlock, fileInodeDataBlock) != 0)
+      {
+        return -1; // Error reading file inode block
+      }
+
+      // Interpret the inode data
+      FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeDataBlock);
+      int rwPointer = entry.rwPointer;
+      int fileSize = fileInode->size;
+
+      // Handle the seek operation
+      if (flag != 0) // Absolute positioning
+      {
+        if (offset < 0 || offset > fileSize)
+        {
+          if(offset < 0){
+            return -1; //Incorrect offset value.
+          }
+          return -2; // Out of bounds
+        }
+        entry.rwPointer = offset;
+      }
+      else// Relative positioning
+      {
+        int newPointer = rwPointer + offset;
+        if (newPointer < 0 || newPointer > fileSize)
+        {
+          return -2; // Out of bounds
+        }
+        entry.rwPointer = newPointer;
+      }
+
+      // Success
+      return 0;
+    }
+  }
+
+  // File descriptor not found
+  return -1;
 }
 
 int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int fnameLen2)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  if (!isValidFileName(filename1, fnameLen1) || !isValidFileName(filename2, fnameLen2))
+  {
+    return -1; // Invalid filename
+  }
+  int parentBlock1 = -1;
+  int fileInode1 = findFile(filename1, fnameLen1, &parentBlock1);
+  if (fileInode1 == -1 || fileInode1 == -2)
+  {
+    return -2; // File does not exist
+  }
+
+  // Check if file 2 already exists
+  int parentBlock2 = -1;
+  int fileInode2 = findFile(filename2, fnameLen2, &parentBlock2);
+  if (fileInode2 != -2)
+  {
+    return -3; // File with new name already exists
+  }
+  if (fileInode1 == -4 || fileInode2 == -4)
+  {
+    return -5; // Directory does not exist
+  }
+  // Check if file is opened or locked
+  for (const auto &entry : openFileTable)
+  {
+    if (entry.fileInodeBlock == fileInode1)
+    {
+      return -4; // File is open
+    }
+  }
+  char fileInodeData[64];
+  myPM->readDiskBlock(fileInode1, fileInodeData);
+  FileInode *fileInode = reinterpret_cast<FileInode *>(fileInodeData);
+  if (fileInode->lockId != -1)
+  {
+    return -4; // File is locked
+  }
+
+  // Update the parent director
+  int currentBlock = parentBlock1;
+  while (currentBlock != -1)
+  {
+    char parentBlockData[64];
+    myPM->readDiskBlock(currentBlock, parentBlockData);
+    DirectoryInode *parentDir = reinterpret_cast<DirectoryInode *>(parentBlockData);
+    for (int i = 0; i < 10; ++i)
+    {
+      if (parentDir->entries[i].blockPointer == fileInode1)
+      {
+        parentDir->entries[i].entryName = filename2[fnameLen2 - 1];
+        myPM->writeDiskBlock(parentBlock1, parentBlockData);
+        return 0;
+      }
+    }
+    currentBlock = parentDir->nextDirBlock;
+  }
+  return -5; // Others reasons
 }
 
 int FileSystem::renameDirectory(char *dirname1, int dnameLen1, char *dirname2, int dnameLen2)
 {
-  return -1; // place holder so there is no warnings when compiling.
+  if (!isValidFileName(dirname1, dnameLen1) || !isValidFileName(dirname2, dnameLen2))
+  {
+    return -1; // Invalid directory name
+  }
+  char oldDir = dirname1[dnameLen1 - 1];
+  char newDir = dirname2[dnameLen2];
+  int parentBlock = 1;
+  for (int i = 1; i < dnameLen1 - 1; ++i)
+  {
+    if (dirname1[i] == '/')
+    {
+      char dirName = dirname1[i - 1];
+      parentBlock = findDirectory(parentBlock, dirName);
+      if (parentBlock == -1)
+      {
+        return -4; // Directory does not exist
+      }
+    }
+  }
+  int dirBlock = findDirectory(parentBlock, oldDir);
+  if (dirBlock == -1)
+  {
+    return -1;
+  }
+  if (findDirectory(parentBlock, newDir) != -1)
+  {
+    return -2;
+  }
+  int currentBlock = 1;
+  while (currentBlock != -1)
+  {
+    char dirBlockData[64];
+    if (myPM->readDiskBlock(currentBlock, dirBlockData) != 0)
+    {
+      return -4; // Error reading directory block
+    }
+
+    DirectoryInode *dir = reinterpret_cast<DirectoryInode *>(dirBlockData);
+    for (int i = 0; i < 10; ++i)
+    {
+      if (dir->entries[i].blockPointer == dirBlock)
+      {
+        dir->entries[i].entryName = newDir; // Update directory name
+        myPM->writeDiskBlock(currentBlock, dirBlockData);
+        return 0; // Success
+      }
+    }
+
+    currentBlock = dir->nextDirBlock; // Move to overflow block, if any
+  }
+  return -4;
 }
 
 int FileSystem::getAttribute(char *filename, int fnameLen /* ... and other parameters as needed */)

@@ -15,13 +15,13 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
      blocks in this partition */
   myBV = new BitVector(myPartitionSize);
   
-  char buffer[64];
-  for (int j = 0; j < 64; j++) buffer[j] = '#';
-  buffer[64] = '\0';
-  cout<<"Initial buffer: "<<buffer<<endl;
-  myBV->getBitVector((unsigned int *)buffer);
-  myDM->writeDiskBlock(myPartitionName, 0, buffer);
-  cout<<"Bit Vector Buffer: "<<buffer<<endl;
+  // char buffer[64];
+  // for (int j = 0; j < 64; j++) buffer[j] = '#';
+  // buffer[64] = '\0';
+  // cout<<"Initial buffer: "<<buffer<<endl;
+  // myBV->getBitVector((unsigned int *)buffer);
+  // myDM->writeDiskBlock(myPartitionName, 0, buffer);
+  // cout<<"Bit Vector Buffer: "<<buffer<<endl;
   char buffer1[64];
   for (int j = 0; j < 64; j++) buffer1[j] = '0';
   myDM->writeDiskBlock(myPartitionName, 1, buffer1);
@@ -53,14 +53,14 @@ int PartitionManager::getFreeDiskBlock()
         //Debugging Only
       //print out the bit vector
 
-      cout<<"After Allocating at block"<<i<<": ";
-      for (int i=0; i<10; i++) {
-        if (myBV->testBit(i) ==0) {
-          cout <<"0";
-        } else {
-          cout <<"1";
-        }
-      }
+      // cout<<"After Allocating at block"<<i<<": ";
+      // for (int i=0; i<10; i++) {
+      //   if (myBV->testBit(i) ==0) {
+      //     cout <<"0";
+      //   } else {
+      //     cout <<"1";
+      //   }
+      // }
 
 
       return i;
@@ -95,15 +95,15 @@ int PartitionManager::returnDiskBlock(int blknum)
     myDM->writeDiskBlock(myPartitionName, 0, buffer);
     //print out the bit vector
 
-    //Debugging Only
-    cout<<"After Deallocating in block"<<blknum<<": ";
-    for (int i=0; i<10; i++) {
-      if (myBV->testBit(i) ==0) {
-        cout <<"0";
-      } else {
-        cout <<"1";
-      }
-    }
+    // //Debugging Only
+    // cout<<"After Deallocating in block"<<blknum<<": ";
+    // for (int i=0; i<10; i++) {
+    //   if (myBV->testBit(i) ==0) {
+    //     cout <<"0";
+    //   } else {
+    //     cout <<"1";
+    //   }
+    // }
     return 0;
   }
   return -1; //Error
