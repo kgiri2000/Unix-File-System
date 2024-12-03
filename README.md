@@ -1,11 +1,14 @@
 # Final Project
 
-Group name:
+Group name: Group_8
 
-group members :
+group members : Nolan,Reis, Kamal
 
 What is working and not working?
-	This can be described by drivers, ie only driver1 works.
+Driver1- Driver4 are all correct.
+Driver6,7,8 has few errors.
+
+
 
 What are you attributes?
 
