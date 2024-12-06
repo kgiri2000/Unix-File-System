@@ -14,21 +14,37 @@ What are you attributes?
 
 ---
 
-* base grade: /100
+* base grade: 80/100
   * group eval:  individual grades will be emailed.
-* create file (imples r/w in dm, pm r/w, getfree, and returnblock) (10 points):  
-* openfile (and close 3points of) opentable, etc ignoring unlock/lock (10 points):  
-* readfile (10 points):  
-* writefile (10 points): 
-* truncfile (10 points): 
-* seekfile (5 points):  
-* appendfile ( 5 points, since just call see to end and write):  
+* create file (imples r/w in dm, pm r/w, getfree, and returnblock) (10 points):
+  * DM that memcopy superblock is not enough -1
+  * PM what don't you write the default bv?  so 0 and 1 are not set to in use.  that's not good.
+  * fs why is mutex and atomic included?
+    * why is the lock in fileinode?  that should be either in open table or a file lock table.
+    * the casting structs don't work correctly, so the directory format is wrong -1
+    *   why do you have single line function s freeblock and allocate block, instead just call myPM.  waste.
+* openfile (and close 3points of) opentable, etc ignoring unlock/lock (10 points):  yes
+ * other then file lock issues, yes it fine. 
+* readfile (10 points):  yes
+  * code looks good and works. 
+* writefile (10 points): mostly -2
+  * fails on edge cases and but mostly works.  
+* truncfile (10 points): not really
+  * disk shows it really doesn't work. there is code that could work (even says yes in drivers), but doesn't work.  not time to debug.  -6 
+* seekfile (5 points):   yes
+* appendfile ( 5 points, since just call see to end and write):  no.... there is code
+  * this call seek (size of file) and write.  isntead there is code here.  bad style and code -1 
 * createdir (10 points) => implies create,open work as well: 
-* lock and unlock (5 points each, 10 points)  looped into open/close as well: 
-* rename (5 points): 
-* deletefile (5 points), remember lock again: 
-* deletedir (5 points), remember empty: 
-* attributes read/set (5 points): 
+* lock and unlock (5 points each, 10 points)  looped into open/close as well:
+  * locks are not PART of the inode, not surive reboot, and have their own table or part of the file table. -2 
+* rename (5 points): mostly
+  * it seems to mostly work, but fs corrupted, it's hard to tell.  code looks like it shold mostly work, but disk says it doesn't always. -1 
+* deletefile (5 points), remember lock again:  yes sort of
+  * work for root, but not directoreis. help funciton fail or just bad code is hard to tell. -2
+* deletedir (5 points), remember empty: same sort of work, but not really
+  * code is there, but does seem to work or work well.  -2 
+* attributes read/set (5 points): no
+  * open count is not a file attribute.  also doesn't seem to work. -2 
 
 other notes:
   * disk is 
